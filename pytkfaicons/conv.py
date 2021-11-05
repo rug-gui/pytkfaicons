@@ -254,3 +254,108 @@ def get_colored_scaled_tk_icon(
     mod_resized_img(img, height)
     img_tk = get_tk_image(img, format=format)
     return img_tk
+
+class faicon:
+    from PIL import ImageOps, ImageTk
+    from PIL.Image import Image
+    from icons import get_icon_image, tk_image_loader, get_tk_icon
+
+    global NAMED_COLORS
+    NAMED_COLORS = {
+    "white":   (0xFF, 0xFF, 0xFF),
+    "silver":  (0xC0, 0xC0, 0xC0),
+    "gray":    (0x80, 0x80, 0x80),
+    "black":   (0x00, 0x00, 0x00),
+    "red":     (0xFF, 0x00, 0x00),
+    "maroon":  (0x80, 0x00, 0x00),
+    "yellow":  (0xFF, 0xFF, 0x00),
+    "olive":   (0x80, 0x80, 0x00),
+    "lime":    (0x00, 0xFF, 0x00),
+    "green":   (0x00, 0x80, 0x00),
+    "aqua":    (0x00, 0xFF, 0xFF),
+    "teal":    (0x00, 0x80, 0x80),
+    "blue":    (0x00, 0x00, 0xFF),
+    "navy":    (0x00, 0x00, 0x80),
+    "fuchsia": (0xFF, 0x00, 0xFF),
+    "purple":  (0x80, 0x00, 0x80)
+}
+
+    def icon(name, style):
+        # pre-calculated 32px height icons (fast)
+        return get_icon_image(name, style, loader=tk_image_loader)
+    def inverticon(name, style):
+        from PIL import Image,ImageTk,ImageOps
+        image = get_icon_image(name, style, loader=Image.open)
+        if image.mode == 'RGBA':
+            r,g,b,a = image.split()
+            rgb_image = Image.merge('RGB', (r,g,b))
+
+            inverted_image = ImageOps.invert(rgb_image)
+
+            r2,g2,b2 = inverted_image.split()
+
+            final_transparent_image = Image.merge('RGBA', (r2,g2,b2,a))
+            return ImageTk.PhotoImage(final_transparent_image)
+        else:
+            inverted_image = ImageOps.invert(image)
+            return ImageTk.PhotoImage(inverted_image)
+
+    def coloricon(name, style,color_name):
+        from PIL import Image,ImageTk
+        import numpy as np
+        rgb=color_string_to_rgb(color_name)
+        image = get_icon_image(name, style, loader=Image.open)
+        im =image
+        data = np.array(im)   # "data" is a height x width x 4 numpy array
+        red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
+        # Replace black with rgb... (leaves alpha values alone...)
+        white_areas = (red == 0) & (blue == 0) & (green == 0)
+        data[..., :-1][white_areas.T] = rgb
+        im2 = Image.fromarray(data)
+        return ImageTk.PhotoImage(im2)
+    global color_string_to_rgb
+    def color_string_to_rgb(color_string):
+        # Named color
+        if color_string in NAMED_COLORS:
+            return NAMED_COLORS[color_string]
+        # #f00 or #ff0000 -> f00 or ff0000
+        if color_string.startswith("#"):
+            color_string = color_string[1:]
+        # f00 -> ff0000
+        if len(color_string) == 3:
+            color_string = color_string[0] * 2 + color_string[1] * 2 + color_string[2] * 2  # noqa
+        # ff0000 -> (255, 0, 0)
+        return (
+            int(color_string[0:2], 16),
+            int(color_string[2:4], 16),
+            int(color_string[4:], 16)
+            ) 
+
+    def colorico(name, style,cname):
+        from PIL import Image,ImageTk
+        img = get_icon_image(name, style, loader=Image.open)
+        pixdata = img.load()
+        # Clean the background noise, if color != white, then set to cname.
+        rgb=color_string_to_rgb(cname)
+        for y in range(img.size[1]):
+            for x in range(img.size[0]):
+                if pixdata[x, y] == (0, 0, 0, 255):
+                    pixdata[x, y] = rgb  #rgb to rgba
+        im = img
+        return ImageTk.PhotoImage(im)
+
+    def color(icon,color):
+        from PIL import Image,ImageTk
+        k=ImageTk.PhotoImage(icon)
+        img=ImageTk.getimage(k)
+        pixdata = img.load()
+        # Clean the background noise, if color != white, then set to cname.
+        rgb=color_string_to_rgb(color)
+        print(rgb)
+        for y in range(img.size[1]):
+            for x in range(img.size[0]):
+                if pixdata[x, y] == (0, 0, 0, 255):
+                    r,g,b = rgb
+                    pixdata[x, y] = (r,g,b,255)#rgb to rgba
+        im=img
+        return ImageTk.PhotoImage(img)
